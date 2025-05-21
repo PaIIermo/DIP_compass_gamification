@@ -1,0 +1,62 @@
+# Job Testing Summary
+
+## Running Tests
+
+```bash
+# Run all tests
+yarn rw test api
+
+# Run specific job tests
+yarn rw test api PointSystemInitializationJob
+yarn rw test api PointSystemUpdateJob
+
+# Run comprehensive tests
+yarn rw test api jobsFullCoverage
+```
+
+## Key Tests for PointSystemInitializationJob
+
+1. **Structure Tests** - Job exists and has correct methods
+2. **Table Exists with Records** - Job exits early and schedules update
+3. **Table Doesn't Exist** - Job logs error and exits
+4. **Empty Table Processing** - Job properly processes publications
+5. **Mock Data Generation** - Job generates mock data when requested
+6. **Period Scheduling** - Job schedules with correct waitUntil date
+7. **Error Handling** - Job recovers from errors and retries
+
+## Key Tests for PointSystemUpdateJob
+
+1. **Structure Tests** - Job exists and has correct methods
+2. **Process Publications** - Job processes new and existing publications
+3. **Skip Mock Data** - Job skips mock publications for citation updates
+4. **Citation Count Updates** - Job correctly updates citation counts
+5. **Error Handling** - Job recovers from fetch errors
+6. **Batch Abort** - Job aborts processing after too many failures
+7. **Snapshot Configuration** - Job correctly configures snapshot parameters
+
+## Adding New Tests
+
+When adding new tests to these files, remember:
+
+1. Define all mocks at the top of the file
+2. Import dependencies AFTER mocking them
+3. Clear mocks in beforeEach blocks
+4. Don't use variables in mock definitions
+
+## Common Patterns
+
+For testing conditional behavior:
+```javascript
+// Configure mock to return different values for different calls
+mockFunction
+  .mockResolvedValueOnce(firstValue)
+  .mockResolvedValueOnce(secondValue);
+
+// Or implement complex behavior
+mockFunction.mockImplementation((param) => {
+  if (param === 'condition') {
+    return Promise.resolve(value1);
+  }
+  return Promise.resolve(value2);
+});
+```

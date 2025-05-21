@@ -1,0 +1,171 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BackgroundJob {
+  id        Int       @id @default(autoincrement())
+  attempts  Int       @default(0)
+  handler   String
+  queue     String
+  priority  Int
+  runAt     DateTime?
+  lockedAt  DateTime?
+  lockedBy  String?
+  lastError String?
+  failedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Event {
+  id                        Int                         @id @default(autoincrement())
+  title                     String?
+  lisperator_id             Int?                        @unique
+  conference_value          Decimal?                    @default(0) @db.Decimal(10, 3)
+}
+
+model Publication {
+  id             Int       @id @default(autoincrement())
+  submission_id  Int       @unique
+  doi            String?   @db.VarChar(255)
+  title          String?   @db.Text
+  conference     Int?
+  review_score   Decimal?  @db.Decimal(10, 3)
+  overall_score  Decimal?  @db.Decimal(10, 3)
+  citation_count Int?      @default(0)
+  date_published DateTime? @db.Timestamptz(6)
+  last_edited_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  Topics         PublicationTopic[]
+  Citations      Citation[]
+  Authors        PublicationUser[]
+  Snapshots      PublicationSnapshot[]
+
+  @@index([conference], name: "idx_publication_conference")
+  @@index([date_published], name: "idx_publication_date")
+  @@index([overall_score], name: "idx_publication_score")
+}
+
+model PublicationSnapshot {
+  id             Int       @id @default(autoincrement())
+  publication_id Int
+  snapshot_date  DateTime  @db.Timestamptz(6)
+  value          Decimal   @db.Decimal(10, 3)
+
+  Publication    Publication @relation(fields: [publication_id], references: [id])
+
+  @@unique([publication_id, snapshot_date])
+  @@index([publication_id, snapshot_date(sort: Desc)], name: "idx_pubsnap_pub_latest")
+}
+
+model UserTopicSnapshot {
+  id            Int       @id @default(autoincrement())
+  user_id       Int
+  topic_id      Int
+  snapshot_date DateTime  @db.Timestamptz(6)
+  mean_value    Decimal   @db.Decimal(10, 3)
+
+  User          User      @relation(fields: [user_id], references: [id])
+  Topic         Topic     @relation(fields: [topic_id], references: [id])
+
+  @@unique([user_id, topic_id, snapshot_date])
+  @@index([user_id, topic_id, snapshot_date(sort: Desc)], name: "idx_user_topic_latest")
+}
+
+model UserOverallSnapshot {
+  id            Int       @id @default(autoincrement())
+  user_id       Int
+  snapshot_date DateTime  @db.Timestamptz(6)
+  mean_value    Decimal   @db.Decimal(10, 3)
+
+  User          User      @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, snapshot_date])
+  @@index([user_id, snapshot_date(sort: Desc)], name: "idx_user_overall_latest")
+}
+
+model TopicSnapshot {
+  id            Int       @id @default(autoincrement())
+  topic_id      Int
+  snapshot_date DateTime  @db.Timestamptz(6)
+  mean_value    Decimal   @db.Decimal(10, 3)
+
+  Topic Topic @relation(fields: [topic_id], references: [id])
+
+  @@unique([topic_id, snapshot_date])
+  @@index([topic_id, snapshot_date(sort: Desc)], name: "idx_topicsnap_latest")
+}
+
+model Topic {
+  id    Int    @id
+  name  String @db.VarChar(255)
+
+  Publications PublicationTopic[]
+  UserTopicSnapshot UserTopicSnapshot[]
+  TopicSnapshots      TopicSnapshot[]
+}
+
+model PublicationTopic {
+  id             Int  @id @default(autoincrement())
+  publication_id Int
+  topic_id       Int
+
+  Publication Publication @relation(fields: [publication_id], references: [id])
+  Topic       Topic       @relation(fields: [topic_id], references: [id])
+
+  @@unique([publication_id, topic_id])
+  @@index([topic_id], name: "idx_pubtopic_topic")
+}
+
+model PublicationUser {
+  id             Int  @id @default(autoincrement())
+  publication_id Int
+  user_id        Int
+
+  Publication Publication @relation(fields: [publication_id], references: [id])
+  User        User        @relation(fields: [user_id], references: [id])
+
+  @@unique([publication_id, user_id])
+  @@index([user_id], name: "idx_pubuser_user")
+}
+
+model Citation {
+  id             Int          @id @default(autoincrement())
+  publication_id  Int
+  oci            String       @unique
+  citing         String?
+  creation_date   DateTime?
+  author_sc       Boolean?
+
+  Publication    Publication @relation(fields: [publication_id], references: [id])
+  @@index([publication_id], name: "idx_citation_publication")
+  @@index([creation_date], name: "idx_citation_date")
+}
+
+model DecayLookup {
+  days         Int    @id
+  decay_factor Float
+
+  @@map("DecayLookup")
+}
+
+model User {
+  id                                                     Int                              @id @default(autoincrement())
+  first_name                                             String?
+  last_name                                              String?
+  alias_name                                             String?
+  email                                                  String                           @unique
+  uuid                                                   String                           @unique
+  lisperator_id                                          Int                              @unique
+  h_index                                                Int?                             @default(0)
+  is_eai_member                                          Boolean                          @default(false)
+  Publications                                           PublicationUser[]
+  UserTopicSnapshot                                      UserTopicSnapshot[]
+  UserOverallSnapshot                                    UserOverallSnapshot[]
+}
