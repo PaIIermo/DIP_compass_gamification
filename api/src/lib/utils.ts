@@ -135,7 +135,12 @@ export async function fetchCitationsListWithRetriesAndVerification(
         `https://opencitations.net/index/api/v2/citations/doi:${doi}`,
         {
           method: 'GET',
-          headers: { authorization: process.env.OPEN_CITATION_API_KEY },
+          headers: {
+            ...(process.env.OPEN_CITATION_API_KEY
+              ? { authorization: process.env.OPEN_CITATION_API_KEY }
+              : {}),
+          },
+
           signal: controller.signal,
         } as RequestInit
       )
